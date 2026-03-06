@@ -36,16 +36,21 @@ export default function App() {
   const handlePlayAgain = () => {
     resetWorld();
     resetGame();
+    const store = useGameStore.getState();
     setStatus('PLAYING');
-    useGameStore.getState().setCurrentPuzzle(getNextPuzzle());
+    if (store.gameMode === 'trivia') {
+      store.setCurrentPuzzle(getNextPuzzle());
+    }
   };
 
   const handleWatchAd = () => {
-    const score = useGameStore.getState().score;
-    useGameStore.getState().setRestoreScore(score);
-    setWobbleCount(2);
-    setStatus('PLAYING');
-    useGameStore.getState().setCurrentPuzzle(getNextPuzzle());
+    const store = useGameStore.getState();
+    store.setRestoreScore(store.score);
+    store.setWobbleCount(2);
+    store.setStatus('PLAYING');
+    if (store.gameMode === 'trivia') {
+      store.setCurrentPuzzle(getNextPuzzle());
+    }
   };
 
   const [fredokaLoaded] = useFonts({

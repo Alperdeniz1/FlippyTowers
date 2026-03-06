@@ -1,19 +1,15 @@
 /**
- * Collision handler - overlap resolution when blocks land.
- * Block vs ground: keep block (first block).
- * Block vs block: compute overlap, replace with overlap block, create debris for cut-off parts.
+ * Collision handler - block lands as whole piece, tower balance affects stability.
+ * No cut-off: block stays intact. Off-center placement shifts tower balance;
+ * physics handles natural toppling when tower becomes too unbalanced.
  */
 
 import Matter from 'matter-js';
-import { getEngine, getWorld, removeBody, applyLateralForceToTower } from './engine';
-import {
-  createBlockFromOverlap,
-  createDebris,
-  HEIGHT,
-  MIN_WIDTH,
-} from './block';
+import { getEngine, getAllBodies } from './engine';
 import { useGameStore } from '../store/gameStore';
 import { getNextPuzzle } from '../data/puzzleLoader';
+
+const TIP_ANGLE_THRESHOLD = 0.9; // ~52 degrees - tower has fallen
 
 let isInitialized = false;
 
@@ -32,85 +28,17 @@ export function initCollisionHandler(): void {
       const bodyA = pair.bodyA;
       const bodyB = pair.bodyB;
 
-      // Only care about collisions involving our dropped block
       if (bodyA.id !== lastDroppedId && bodyB.id !== lastDroppedId) continue;
 
-      const fallingBlock = bodyA.id === lastDroppedId ? bodyA : bodyB;
       const other = bodyA.id === lastDroppedId ? bodyB : bodyA;
 
-      // Block vs ground - first block, keep as-is
-      if (other.label === 'ground') {
+      // Block landed on ground or another block - keep as whole piece, advance game
+      if (other.label === 'ground' || other.label === 'block') {
         useGameStore.getState().setLastDroppedBlockId(null);
         useGameStore.getState().setIsPieceFalling(false);
-        useGameStore.getState().setCurrentPuzzle(getNextPuzzle());
-        return;
-      }
-
-      // Block vs block - compute overlap
-      if (other.label === 'block') {
-        const fallingLeft = fallingBlock.bounds.min.x;
-        const fallingRight = fallingBlock.bounds.max.x;
-        const towerLeft = other.bounds.min.x;
-        const towerRight = other.bounds.max.x;
-
-        const overlapLeft = Math.max(fallingLeft, towerLeft);
-        const overlapRight = Math.min(fallingRight, towerRight);
-        const overlapWidth = overlapRight - overlapLeft;
-
-        useGameStore.getState().setLastDroppedBlockId(null);
-
-        if (overlapWidth < MIN_WIDTH) {
-          // Complete miss - wobble, remove block
-          removeBody(fallingBlock);
-          useGameStore.getState().decrementScore();
-          useGameStore.getState().incrementWobbleCount();
-          const wobbleCount = useGameStore.getState().wobbleCount;
-          if (wobbleCount >= 3) {
-            applyLateralForceToTower();
-            useGameStore.getState().incrementCollapseCount();
-            useGameStore.getState().setStatus('COLLAPSED');
-          } else {
-            useGameStore.getState().setIsPieceFalling(false);
-            useGameStore.getState().setCurrentPuzzle(getNextPuzzle());
-          }
-          return;
+        if (useGameStore.getState().gameMode === 'trivia') {
+          useGameStore.getState().setCurrentPuzzle(getNextPuzzle());
         }
-
-        // Partial or full overlap - replace block, create debris
-        const overlapCenterX = (overlapLeft + overlapRight) / 2;
-        const towerTopY = other.bounds.min.y;
-        const newBlockY = towerTopY - HEIGHT / 2;
-
-        removeBody(fallingBlock);
-
-        createBlockFromOverlap(overlapCenterX, newBlockY, overlapWidth);
-
-        // Create debris for left cut-off
-        if (fallingLeft < overlapLeft) {
-          const debrisWidth = overlapLeft - fallingLeft;
-          const debrisCenterX = (fallingLeft + overlapLeft) / 2;
-          createDebris(
-            debrisCenterX,
-            fallingBlock.position.y,
-            debrisWidth,
-            HEIGHT
-          );
-        }
-
-        // Create debris for right cut-off
-        if (fallingRight > overlapRight) {
-          const debrisWidth = fallingRight - overlapRight;
-          const debrisCenterX = (overlapRight + fallingRight) / 2;
-          createDebris(
-            debrisCenterX,
-            fallingBlock.position.y,
-            debrisWidth,
-            HEIGHT
-          );
-        }
-
-        useGameStore.getState().setIsPieceFalling(false);
-        useGameStore.getState().setCurrentPuzzle(getNextPuzzle());
         return;
       }
     }
@@ -118,19 +46,20 @@ export function initCollisionHandler(): void {
 }
 
 /**
- * Remove debris bodies that have fallen off-screen. Call each frame.
+ * Check if tower has tipped over (any block rotated too much). Call each frame.
+ * Triggers COLLAPSED when tower becomes unbalanced and falls.
  */
-export function cleanupDebris(): void {
-  const dims = useGameStore.getState().physicsDimensions;
-  if (!dims) return;
+export function checkTowerStability(): void {
+  const status = useGameStore.getState().status;
+  if (status !== 'PLAYING') return;
 
-  const world = getWorld();
-  const bodies = Matter.Composite.allBodies(world);
-  const offScreenY = dims.height + 100;
-
+  const bodies = getAllBodies().filter((b) => b.label === 'block');
   for (const body of bodies) {
-    if (body.label === 'debris' && body.position.y > offScreenY) {
-      Matter.World.remove(world, body);
+    const absAngle = Math.abs(body.angle);
+    if (absAngle > TIP_ANGLE_THRESHOLD) {
+      useGameStore.getState().incrementCollapseCount();
+      useGameStore.getState().setStatus('COLLAPSED');
+      return;
     }
   }
 }

@@ -19,9 +19,11 @@ export interface Puzzle {
 }
 
 export type GameStatus = 'HOME' | 'PLAYING' | 'COLLAPSED';
+export type GameMode = 'trivia' | 'balance';
 
 export interface GameState {
   status: GameStatus;
+  gameMode: GameMode;
   score: number;
   bestScore: number;
   wobbleCount: number;
@@ -38,6 +40,7 @@ export interface GameState {
 interface GameActions {
   setStatus: (status: GameStatus) => void;
   setPhysicsDimensions: (dims: { width: number; height: number } | null) => void;
+  setGameMode: (mode: GameMode) => void;
   startGame: (firstPuzzle?: Puzzle) => void;
   setScore: (score: number) => void;
   setBestScore: (bestScore: number) => void;
@@ -56,6 +59,7 @@ interface GameActions {
 
 const initialState: GameState = {
   status: 'HOME',
+  gameMode: 'trivia',
   score: 0,
   bestScore: 0,
   wobbleCount: 0,
@@ -74,6 +78,7 @@ export const useGameStore = create<GameState & GameActions>((set) => ({
 
   setStatus: (status) => set({ status }),
   setPhysicsDimensions: (physicsDimensions) => set({ physicsDimensions }),
+  setGameMode: (gameMode) => set({ gameMode }),
   setScore: (score) => set({ score }),
   setBestScore: (bestScore) => set({ bestScore }),
   setWobbleCount: (wobbleCount) => set({ wobbleCount }),
@@ -106,6 +111,7 @@ export const useGameStore = create<GameState & GameActions>((set) => ({
   resetGame: () =>
     set((state) => ({
       ...initialState,
+      gameMode: state.gameMode,
       bestScore: state.bestScore,
       collapseCountForAds: state.collapseCountForAds,
       restoreScore: 0,
@@ -126,7 +132,7 @@ export const useGameStore = create<GameState & GameActions>((set) => ({
       status: 'PLAYING',
       score: 0,
       wobbleCount: 0,
-      currentPuzzle: firstPuzzle ?? null,
+      currentPuzzle: state.gameMode === 'trivia' ? (firstPuzzle ?? null) : null,
       isPieceFalling: false,
       lastDroppedBlockId: null,
     })),

@@ -6,7 +6,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { StyleSheet, View, LayoutChangeEvent } from 'react-native';
 import { getAllBodies, updateEngine } from '../physics';
-import { cleanupDebris } from '../physics/collisionHandler';
+import { checkTowerStability } from '../physics/collisionHandler';
 import { createGround } from '../physics/ground';
 import { restoreTower, getBlockWidth, HEIGHT } from '../physics/block';
 import { initPendingBlock, updatePendingBlock } from '../physics/pendingBlock';
@@ -74,8 +74,10 @@ export function PhysicsCanvas({ onReady, restoreScore = 0 }: PhysicsCanvasProps)
       const isPieceFalling = store.isPieceFalling;
       const score = store.score;
 
-      // Update pending block bounce when in pre-drop phase
-      if (dims && status === 'PLAYING' && currentPuzzle && !isPieceFalling) {
+      // Update pending block bounce when in pre-drop phase (trivia: needs puzzle; balance: always)
+      const gameMode = store.gameMode;
+      const showPending = gameMode === 'balance' ? true : !!currentPuzzle;
+      if (dims && status === 'PLAYING' && showPending && !isPieceFalling) {
         if (!pendingInitializedRef.current) {
           initPendingBlock(dims.width / 2);
           pendingInitializedRef.current = true;
@@ -97,7 +99,7 @@ export function PhysicsCanvas({ onReady, restoreScore = 0 }: PhysicsCanvasProps)
       }
 
       updateEngine(1000 / 60);
-      cleanupDebris();
+      checkTowerStability();
       const nextBodies = getAllBodies().map((body) => ({
         id: body.id,
         x: body.position.x - (body.bounds.max.x - body.bounds.min.x) / 2,

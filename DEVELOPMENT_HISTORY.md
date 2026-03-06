@@ -169,18 +169,46 @@ A chronological log of development phases and fixes for the "One More Floor" mob
 
 ---
 
-## Phase 7: Horizontal Bouncing Drop & Cut-Off Mechanic
+## Phase 7: Horizontal Bouncing Drop & Tower Balance
 
-**Goal:** Add timing-based stacking: piece bounces horizontally before drop; misaligned landings result in cut-off debris.
+**Goal:** Add timing-based stacking: piece bounces horizontally before drop; block stays whole; tower balance affects stability.
 
 **Implemented:**
 - `src/physics/pendingBlock.ts` - Bounce animation (left-right, speed increases with score)
-- `src/physics/collisionHandler.ts` - Overlap resolution: block vs ground (keep block); block vs block (compute overlap, replace with overlap block, create debris for cut-off parts)
-- `src/physics/block.ts` - `createBlockFromOverlap()`, `createDebris()`, `MIN_WIDTH`, `HEIGHT` exports
+- `src/physics/collisionHandler.ts` - Block lands as whole piece (no cut-off); `checkTowerStability()` detects when tower tips (angle > ~52°) and triggers COLLAPSED
 - `src/store/gameStore.ts` - `pendingBlockX`, `isPieceFalling`, `lastDroppedBlockId`
 - TriviaOverlay: drops block at `pendingBlockX` on correct answer; collision handler advances puzzle on landing
-- PhysicsCanvas (native + web): draws pending block, runs bounce update, `cleanupDebris()` each frame
-- Complete miss (overlap < MIN): wobble + decrement score; collapse at 3 strikes
+- PhysicsCanvas (native + web): draws pending block, runs bounce update, `checkTowerStability()` each frame
+- **Tower balance:** Off-center placement shifts center of mass; physics naturally topples tower when too unbalanced; stability check detects fall and ends game
+
+---
+
+## Tower Balance (No Cut-Off)
+
+**Issue:** Cut-off mechanic removed tower balancing gameplay - blocks were replaced with overlap, losing the physics-based balance challenge.
+
+**Fix:**
+- Block stays whole when it lands (no overlap resolution, no debris)
+- Off-center placement shifts tower center of mass; Matter.js physics handles natural toppling
+- `checkTowerStability()` runs each frame: when any block rotates past ~52°, triggers COLLAPSED
+- Removed `createBlockFromOverlap`, `createDebris`, `cleanupDebris`
+- Tower can now fall left or right when too unbalanced
+
+---
+
+## Game Modes - Trivia vs Balance
+
+**Goal:** Let user choose between trivia mode (questions + timing) and balance-only mode before starting.
+
+**Implemented:**
+- `gameMode: 'trivia' | 'balance'` in store
+- HomeScreen: mode selector with "Trivia" and "Balance" buttons, hint text for each
+- **Trivia mode:** Question bar + answer buttons + wobble bar; correct answer drops block
+- **Balance mode:** Single "Drop" button; no questions; pure tower balancing; wobble bar hidden
+- `BalanceOverlay.tsx` - Drop button to release the bouncing block
+- Collision handler: only sets next puzzle in trivia mode
+- PhysicsCanvas: shows pending block in both modes (balance mode always shows when in pre-drop)
+- App.tsx: handlePlayAgain / handleWatchAd respect game mode for puzzle setting
 
 ---
 
@@ -205,7 +233,7 @@ src/
 │                     collisionHandler.ts
 ├── render/           PhysicsCanvas.tsx, PhysicsCanvas.web.tsx
 ├── store/            gameStore.ts, persistence.ts
-├── components/       ChunkyButton, TriviaOverlay, TriviaOptionButton,
+├── components/       ChunkyButton, TriviaOverlay, BalanceOverlay, TriviaOptionButton,
 │                     ScoreHUD, WobbleBar, GradientBackground,
 │                     AdBanner, RewardedRecoveryModal, WebLayoutFix
 ├── screens/          HomeScreen, GameScreen, GameOverScreen

@@ -1,11 +1,12 @@
 /**
- * Game screen - Physics canvas with Trivia overlay and Score HUD.
+ * Game screen - Physics canvas with Trivia or Balance overlay and Score HUD.
  */
 
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { PhysicsCanvas } from '../render/PhysicsCanvas';
 import { TriviaOverlay } from '../components/TriviaOverlay';
+import { BalanceOverlay } from '../components/BalanceOverlay';
 import { ScoreHUD } from '../components/ScoreHUD';
 import { WobbleBar } from '../components/WobbleBar';
 import { GradientBackground } from '../components/GradientBackground';
@@ -13,6 +14,7 @@ import { useGameStore } from '../store/gameStore';
 
 export function GameScreen() {
   const restoreScore = useGameStore((s) => s.restoreScore);
+  const gameMode = useGameStore((s) => s.gameMode);
 
   return (
     <GradientBackground>
@@ -21,9 +23,9 @@ export function GameScreen() {
       <View style={styles.uiOverlay} pointerEvents="box-none">
         <View style={styles.hudRow}>
           <ScoreHUD />
-          <WobbleBar />
+          {gameMode === 'trivia' && <WobbleBar />}
         </View>
-        <TriviaOverlay />
+        {gameMode === 'trivia' ? <TriviaOverlay /> : <BalanceOverlay />}
       </View>
     </View>
     </GradientBackground>
