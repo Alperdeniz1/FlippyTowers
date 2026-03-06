@@ -169,11 +169,40 @@ A chronological log of development phases and fixes for the "One More Floor" mob
 
 ---
 
+## Phase 7: Horizontal Bouncing Drop & Cut-Off Mechanic
+
+**Goal:** Add timing-based stacking: piece bounces horizontally before drop; misaligned landings result in cut-off debris.
+
+**Implemented:**
+- `src/physics/pendingBlock.ts` - Bounce animation (left-right, speed increases with score)
+- `src/physics/collisionHandler.ts` - Overlap resolution: block vs ground (keep block); block vs block (compute overlap, replace with overlap block, create debris for cut-off parts)
+- `src/physics/block.ts` - `createBlockFromOverlap()`, `createDebris()`, `MIN_WIDTH`, `HEIGHT` exports
+- `src/store/gameStore.ts` - `pendingBlockX`, `isPieceFalling`, `lastDroppedBlockId`
+- TriviaOverlay: drops block at `pendingBlockX` on correct answer; collision handler advances puzzle on landing
+- PhysicsCanvas (native + web): draws pending block, runs bounce update, `cleanupDebris()` each frame
+- Complete miss (overlap < MIN): wobble + decrement score; collapse at 3 strikes
+
+---
+
+## Trivia UI Layout - Tower Visibility
+
+**Issue:** Question card overlapped the tower, blocking visibility and hurting playability.
+
+**Fix:**
+- Restructured `TriviaOverlay.tsx` for a cleaner layout:
+  - **Question bar:** Dedicated block at top of screen (below HUD), compact, full-width
+  - **Answer buttons:** Split left/right - one button on the left of the tower, one on the right
+- Tower is always visible in the center; buttons flank the play area for easy thumb tapping
+- Improves playability: user can see the bouncing piece and tower while answering
+
+---
+
 ## File Structure (Final)
 
 ```
 src/
-├── physics/          engine.ts, ground.ts, block.ts
+├── physics/          engine.ts, ground.ts, block.ts, pendingBlock.ts,
+│                     collisionHandler.ts
 ├── render/           PhysicsCanvas.tsx, PhysicsCanvas.web.tsx
 ├── store/            gameStore.ts, persistence.ts
 ├── components/       ChunkyButton, TriviaOverlay, TriviaOptionButton,

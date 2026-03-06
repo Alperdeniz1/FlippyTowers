@@ -3,13 +3,15 @@
  * Runs at 60fps independent of React's render cycle.
  */
 
-import React, { useEffect, useCallback, useState } from 'react';
+import React, { useEffect, useCallback, useState, useRef } from 'react';
 import { StyleSheet, View, LayoutChangeEvent } from 'react-native';
 import { Canvas, Path, Skia } from '@shopify/react-native-skia';
 import { useSharedValue, useFrameCallback, useDerivedValue, runOnJS } from 'react-native-reanimated';
 import { getAllBodies, updateEngine } from '../physics';
+import { cleanupDebris } from '../physics/collisionHandler';
 import { createGround } from '../physics/ground';
-import { restoreTower } from '../physics/block';
+import { restoreTower, getBlockWidth, HEIGHT } from '../physics/block';
+import { initPendingBlock, updatePendingBlock } from '../physics/pendingBlock';
 import { resetWorld } from '../physics/engine';
 import { useGameStore } from '../store/gameStore';
 import { colors } from '../theme/colors';
@@ -28,9 +30,13 @@ interface PhysicsCanvasProps {
   restoreScore?: number;
 }
 
+const SPAWN_Y = 50;
+
 export function PhysicsCanvas({ onReady, restoreScore = 0 }: PhysicsCanvasProps) {
   const bodyPositions = useSharedValue<BodyData[]>([]);
+  const pendingBlockData = useSharedValue<{ x: number; y: number; w: number; h: number } | null>(null);
   const [dimensions, setDimensions] = useState<{ width: number; height: number } | null>(null);
+  const pendingInitializedRef = useRef(false);
 
   const setPhysicsDimensions = useGameStore((s) => s.setPhysicsDimensions);
 
@@ -59,7 +65,37 @@ export function PhysicsCanvas({ onReady, restoreScore = 0 }: PhysicsCanvasProps)
   }, [dimensions, onReady, restoreScore, setPhysicsDimensions]);
 
   const syncBodiesToSharedValue = useCallback(() => {
+    const store = useGameStore.getState();
+    const dims = store.physicsDimensions;
+    const status = store.status;
+    const currentPuzzle = store.currentPuzzle;
+    const isPieceFalling = store.isPieceFalling;
+    const score = store.score;
+
+    // Update pending block bounce when in pre-drop phase
+    if (dims && status === 'PLAYING' && currentPuzzle && !isPieceFalling) {
+      if (!pendingInitializedRef.current) {
+        initPendingBlock(dims.width / 2);
+        pendingInitializedRef.current = true;
+      }
+      const blockWidth = getBlockWidth(score + 1);
+      const newX = updatePendingBlock(1000 / 60, dims.width, blockWidth, score);
+      store.setPendingBlockX(newX);
+      pendingBlockData.value = {
+        x: newX - blockWidth / 2,
+        y: SPAWN_Y - HEIGHT / 2,
+        w: blockWidth,
+        h: HEIGHT,
+      };
+    } else {
+      if (isPieceFalling) {
+        pendingInitializedRef.current = false;
+      }
+      pendingBlockData.value = null;
+    }
+
     updateEngine(1000 / 60);
+    cleanupDebris();
     const bodies = getAllBodies().map((body) => ({
       id: body.id,
       x: body.position.x - (body.bounds.max.x - body.bounds.min.x) / 2,
@@ -94,10 +130,19 @@ export function PhysicsCanvas({ onReady, restoreScore = 0 }: PhysicsCanvasProps)
     return path;
   });
 
+  const pendingBlockPath = useDerivedValue(() => {
+    const data = pendingBlockData.value;
+    if (!data) return Skia.Path.Make();
+    const path = Skia.Path.Make();
+    path.addRect(Skia.XYWHRect(data.x, data.y, data.w, data.h));
+    return path;
+  });
+
   return (
     <View style={styles.canvas} onLayout={onLayout}>
       <Canvas style={StyleSheet.absoluteFill}>
         <Path path={blocksPath} color={colors.primary} />
+        <Path path={pendingBlockPath} color={colors.primary} />
       </Canvas>
     </View>
   );

@@ -3,11 +3,13 @@
  * Skia's useDerivedValue + Path doesn't work in worklet context on web.
  */
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { StyleSheet, View, LayoutChangeEvent } from 'react-native';
 import { getAllBodies, updateEngine } from '../physics';
+import { cleanupDebris } from '../physics/collisionHandler';
 import { createGround } from '../physics/ground';
-import { restoreTower } from '../physics/block';
+import { restoreTower, getBlockWidth, HEIGHT } from '../physics/block';
+import { initPendingBlock, updatePendingBlock } from '../physics/pendingBlock';
 import { resetWorld } from '../physics/engine';
 import { useGameStore } from '../store/gameStore';
 import { colors } from '../theme/colors';
@@ -27,9 +29,13 @@ interface PhysicsCanvasProps {
   restoreScore?: number;
 }
 
+const SPAWN_Y = 50;
+
 export function PhysicsCanvas({ onReady, restoreScore = 0 }: PhysicsCanvasProps) {
   const [bodies, setBodies] = useState<BodyData[]>([]);
+  const [pendingBlock, setPendingBlock] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
   const [dimensions, setDimensions] = useState<{ width: number; height: number } | null>(null);
+  const pendingInitializedRef = useRef(false);
 
   const setPhysicsDimensions = useGameStore((s) => s.setPhysicsDimensions);
 
@@ -61,7 +67,37 @@ export function PhysicsCanvas({ onReady, restoreScore = 0 }: PhysicsCanvasProps)
     if (!dimensions) return;
     let rafId: number;
     const loop = () => {
+      const store = useGameStore.getState();
+      const dims = store.physicsDimensions;
+      const status = store.status;
+      const currentPuzzle = store.currentPuzzle;
+      const isPieceFalling = store.isPieceFalling;
+      const score = store.score;
+
+      // Update pending block bounce when in pre-drop phase
+      if (dims && status === 'PLAYING' && currentPuzzle && !isPieceFalling) {
+        if (!pendingInitializedRef.current) {
+          initPendingBlock(dims.width / 2);
+          pendingInitializedRef.current = true;
+        }
+        const blockWidth = getBlockWidth(score + 1);
+        const newX = updatePendingBlock(1000 / 60, dims.width, blockWidth, score);
+        store.setPendingBlockX(newX);
+        setPendingBlock({
+          x: newX - blockWidth / 2,
+          y: SPAWN_Y - HEIGHT / 2,
+          w: blockWidth,
+          h: HEIGHT,
+        });
+      } else {
+        if (isPieceFalling) {
+          pendingInitializedRef.current = false;
+        }
+        setPendingBlock(null);
+      }
+
       updateEngine(1000 / 60);
+      cleanupDebris();
       const nextBodies = getAllBodies().map((body) => ({
         id: body.id,
         x: body.position.x - (body.bounds.max.x - body.bounds.min.x) / 2,
@@ -80,6 +116,21 @@ export function PhysicsCanvas({ onReady, restoreScore = 0 }: PhysicsCanvasProps)
 
   return (
     <View style={styles.canvas} onLayout={onLayout}>
+      {pendingBlock && (
+        <View
+          key="pending"
+          style={[
+            styles.block,
+            { backgroundColor: colors.primary },
+            {
+              left: pendingBlock.x,
+              top: pendingBlock.y,
+              width: pendingBlock.w,
+              height: pendingBlock.h,
+            },
+          ]}
+        />
+      )}
       {bodies.map((b) => (
         <View
           key={b.id}

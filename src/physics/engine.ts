@@ -4,6 +4,7 @@
  */
 
 import Matter from 'matter-js';
+import { initCollisionHandler } from './collisionHandler';
 
 let engine: Matter.Engine | null = null;
 let world: Matter.World | null = null;
@@ -12,6 +13,7 @@ export function getEngine(): Matter.Engine {
   if (!engine) {
     engine = Matter.Engine.create();
     world = engine.world;
+    initCollisionHandler();
   }
   return engine;
 }

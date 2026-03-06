@@ -30,6 +30,9 @@ export interface GameState {
   collapseCountForAds: number;
   restoreScore: number; // When > 0, physics should restore tower (after ad revive)
   physicsDimensions: { width: number; height: number } | null; // Canvas size for physics/spawn
+  pendingBlockX: number;
+  isPieceFalling: boolean;
+  lastDroppedBlockId: number | null;
 }
 
 interface GameActions {
@@ -41,10 +44,14 @@ interface GameActions {
   setWobbleCount: (count: number) => void;
   setCurrentPuzzle: (puzzle: Puzzle | null) => void;
   incrementScore: () => void;
+  decrementScore: () => void;
   incrementWobbleCount: () => void;
   incrementCollapseCount: () => void;
   resetGame: () => void;
   setRestoreScore: (score: number) => void;
+  setPendingBlockX: (x: number) => void;
+  setIsPieceFalling: (falling: boolean) => void;
+  setLastDroppedBlockId: (id: number | null) => void;
 }
 
 const initialState: GameState = {
@@ -57,6 +64,9 @@ const initialState: GameState = {
   collapseCountForAds: 0,
   restoreScore: 0,
   physicsDimensions: null,
+  pendingBlockX: 0,
+  isPieceFalling: false,
+  lastDroppedBlockId: null,
 };
 
 export const useGameStore = create<GameState & GameActions>((set) => ({
@@ -82,6 +92,11 @@ export const useGameStore = create<GameState & GameActions>((set) => ({
       };
     }),
 
+  decrementScore: () =>
+    set((state) => ({
+      score: Math.max(0, state.score - 1),
+    })),
+
   incrementWobbleCount: () =>
     set((state) => ({ wobbleCount: Math.min(3, state.wobbleCount + 1) })),
 
@@ -89,17 +104,21 @@ export const useGameStore = create<GameState & GameActions>((set) => ({
     set((state) => ({ collapseCountForAds: state.collapseCountForAds + 1 })),
 
   resetGame: () =>
-    set((state) => {
-      const newState = {
-        ...initialState,
-        bestScore: state.bestScore,
-        collapseCountForAds: state.collapseCountForAds,
-        restoreScore: 0,
-      };
-      return newState;
-    }),
+    set((state) => ({
+      ...initialState,
+      bestScore: state.bestScore,
+      collapseCountForAds: state.collapseCountForAds,
+      restoreScore: 0,
+      pendingBlockX: 0,
+      isPieceFalling: false,
+      lastDroppedBlockId: null,
+    })),
 
   setRestoreScore: (restoreScore) => set({ restoreScore }),
+
+  setPendingBlockX: (pendingBlockX) => set({ pendingBlockX }),
+  setIsPieceFalling: (isPieceFalling) => set({ isPieceFalling }),
+  setLastDroppedBlockId: (lastDroppedBlockId) => set({ lastDroppedBlockId }),
 
   startGame: (firstPuzzle?: Puzzle) =>
     set((state) => ({
@@ -108,5 +127,7 @@ export const useGameStore = create<GameState & GameActions>((set) => ({
       score: 0,
       wobbleCount: 0,
       currentPuzzle: firstPuzzle ?? null,
+      isPieceFalling: false,
+      lastDroppedBlockId: null,
     })),
 }));

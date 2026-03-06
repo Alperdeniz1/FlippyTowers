@@ -20,6 +20,7 @@ interface TriviaOptionButtonProps {
   isCorrect: boolean;
   onPress: (isCorrect: boolean) => void;
   style?: ViewStyle;
+  compact?: boolean;
 }
 
 export function TriviaOptionButton({
@@ -28,6 +29,7 @@ export function TriviaOptionButton({
   isCorrect,
   onPress,
   style,
+  compact = false,
 }: TriviaOptionButtonProps) {
   const scale = useSharedValue(1);
   const translateX = useSharedValue(0);
@@ -67,13 +69,16 @@ export function TriviaOptionButton({
         onPress={handlePress}
         style={({ pressed }) => [
           styles.button,
+          compact && styles.buttonCompact,
           {
             transform: [{ translateY: pressed ? 4 : 0 }],
             borderBottomWidth: pressed ? 2 : 6,
           },
         ]}
       >
-        <Text style={styles.text}>{emoji} {label}</Text>
+        <Text style={[styles.text, compact && styles.textCompact]} numberOfLines={1}>
+          {emoji} {label}
+        </Text>
       </Pressable>
     </Animated.View>
   );
@@ -93,9 +98,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  buttonCompact: {
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+  },
   text: {
     fontFamily: 'Nunito_800ExtraBold',
     fontSize: 18,
     color: colors.space,
+  },
+  textCompact: {
+    fontSize: 14,
   },
 });

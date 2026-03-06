@@ -1,5 +1,6 @@
 /**
- * Trivia question overlay - binary question with two emoji options.
+ * Trivia overlay - question bar at top, answer buttons flanking the tower (left/right).
+ * Keeps the tower always visible for better playability.
  */
 
 import React from 'react';
@@ -16,20 +17,25 @@ export function TriviaOverlay() {
   const physicsDimensions = useGameStore((s) => s.physicsDimensions);
   const score = useGameStore((s) => s.score);
   const wobbleCount = useGameStore((s) => s.wobbleCount);
-  const setCurrentPuzzle = useGameStore((s) => s.setCurrentPuzzle);
   const setStatus = useGameStore((s) => s.setStatus);
   const incrementScore = useGameStore((s) => s.incrementScore);
   const incrementWobbleCount = useGameStore((s) => s.incrementWobbleCount);
   const incrementCollapseCount = useGameStore((s) => s.incrementCollapseCount);
+  const pendingBlockX = useGameStore((s) => s.pendingBlockX);
+  const setIsPieceFalling = useGameStore((s) => s.setIsPieceFalling);
+  const setLastDroppedBlockId = useGameStore((s) => s.setLastDroppedBlockId);
+  const setCurrentPuzzle = useGameStore((s) => s.setCurrentPuzzle);
 
   const handleAnswer = (isCorrect: boolean) => {
     if (!currentPuzzle) return;
     if (isCorrect) {
       const newScore = score + 1;
       incrementScore();
-      const centerX = physicsDimensions ? physicsDimensions.width / 2 : 200;
-      createBlock(centerX, 50, newScore);
-      setCurrentPuzzle(getNextPuzzle());
+      const centerX = physicsDimensions ? pendingBlockX : 200;
+      const block = createBlock(centerX, 50, newScore);
+      setIsPieceFalling(true);
+      setLastDroppedBlockId(block.id);
+      // Next puzzle is set by collision handler when block lands
     } else {
       incrementWobbleCount();
       if (wobbleCount >= 2) {
@@ -46,53 +52,76 @@ export function TriviaOverlay() {
     return null;
   }
 
+  const [leftOpt, rightOpt] = currentPuzzle.options;
+
   return (
-    <View style={styles.container}>
-      <View style={styles.card}>
-        <Text style={styles.question}>{currentPuzzle.question}</Text>
-        <View style={styles.options}>
-          {currentPuzzle.options.map((opt) => (
-            <TriviaOptionButton
-              key={opt.label}
-              emoji={opt.emoji}
-              label={opt.label}
-              isCorrect={opt.isCorrect}
-              onPress={handleAnswer}
-              style={styles.optionButton}
-            />
-          ))}
-        </View>
+    <>
+      {/* Question bar - dedicated block at top, tower always visible below */}
+      <View style={styles.questionBar}>
+        <Text style={styles.question} numberOfLines={2}>
+          {currentPuzzle.question}
+        </Text>
       </View>
-    </View>
+
+      {/* Answer buttons - left and right of tower for easy tapping */}
+      <View style={styles.leftButton}>
+        <TriviaOptionButton
+          key={leftOpt.label}
+          emoji={leftOpt.emoji}
+          label={leftOpt.label}
+          isCorrect={leftOpt.isCorrect}
+          onPress={handleAnswer}
+          style={styles.optionButton}
+          compact
+        />
+      </View>
+      <View style={styles.rightButton}>
+        <TriviaOptionButton
+          key={rightOpt.label}
+          emoji={rightOpt.emoji}
+          label={rightOpt.label}
+          isCorrect={rightOpt.isCorrect}
+          onPress={handleAnswer}
+          style={styles.optionButton}
+          compact
+        />
+      </View>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  questionBar: {
     position: 'absolute',
-    bottom: 120 + AD_BANNER_HEIGHT,
-    left: 24,
-    right: 24,
-    alignItems: 'center',
-  },
-  card: {
+    top: 100,
+    left: 16,
+    right: 16,
     backgroundColor: '#fffdf5',
-    borderRadius: 16,
-    padding: 24,
-    width: '100%',
-    maxWidth: 340,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderWidth: 3,
+    borderColor: 'rgba(0,0,0,0.15)',
   },
   question: {
     fontFamily: 'Nunito_800ExtraBold',
-    fontSize: 20,
+    fontSize: 16,
     color: '#1a0533',
-    marginBottom: 20,
     textAlign: 'center',
   },
-  options: {
-    gap: 12,
+  leftButton: {
+    position: 'absolute',
+    left: 16,
+    bottom: 100 + AD_BANNER_HEIGHT,
+    width: 120,
+  },
+  rightButton: {
+    position: 'absolute',
+    right: 16,
+    bottom: 100 + AD_BANNER_HEIGHT,
+    width: 120,
   },
   optionButton: {
-    minWidth: '100%',
+    width: '100%',
   },
 });
