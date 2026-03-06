@@ -6,7 +6,7 @@
 import React, { useEffect, useCallback, useState } from 'react';
 import { StyleSheet, View, LayoutChangeEvent } from 'react-native';
 import { Canvas, Path, Skia } from '@shopify/react-native-skia';
-import { useSharedValue, useFrameCallback, useDerivedValue } from 'react-native-reanimated';
+import { useSharedValue, useFrameCallback, useDerivedValue, runOnJS } from 'react-native-reanimated';
 import { getAllBodies, updateEngine } from '../physics';
 import { createGround } from '../physics/ground';
 import { restoreTower } from '../physics/block';
@@ -58,7 +58,7 @@ export function PhysicsCanvas({ onReady, restoreScore = 0 }: PhysicsCanvasProps)
     };
   }, [dimensions, onReady, restoreScore, setPhysicsDimensions]);
 
-  useFrameCallback(() => {
+  const syncBodiesToSharedValue = useCallback(() => {
     updateEngine(1000 / 60);
     const bodies = getAllBodies().map((body) => ({
       id: body.id,
@@ -69,6 +69,10 @@ export function PhysicsCanvas({ onReady, restoreScore = 0 }: PhysicsCanvasProps)
       angle: body.angle,
     }));
     bodyPositions.value = bodies;
+  }, []);
+
+  useFrameCallback(() => {
+    runOnJS(syncBodiesToSharedValue)();
   });
 
   const blocksPath = useDerivedValue(() => {
