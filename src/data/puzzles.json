@@ -1,0 +1,82 @@
+[
+  {
+    "question": "Which is heavier?",
+    "options": [
+      { "emoji": "🪨", "label": "Rock", "isCorrect": true },
+      { "emoji": "🪶", "label": "Feather", "isCorrect": false }
+    ],
+    "category": "weight"
+  },
+  {
+    "question": "What's stronger?",
+    "options": [
+      { "emoji": "🦁", "label": "Lion", "isCorrect": true },
+      { "emoji": "🐱", "label": "Cat", "isCorrect": false }
+    ],
+    "category": "strength"
+  },
+  {
+    "question": "Which is faster?",
+    "options": [
+      { "emoji": "🐇", "label": "Rabbit", "isCorrect": true },
+      { "emoji": "🐢", "label": "Turtle", "isCorrect": false }
+    ],
+    "category": "speed"
+  },
+  {
+    "question": "Which is bigger?",
+    "options": [
+      { "emoji": "🐘", "label": "Elephant", "isCorrect": true },
+      { "emoji": "🐜", "label": "Ant", "isCorrect": false }
+    ],
+    "category": "size"
+  },
+  {
+    "question": "Which lives longer?",
+    "options": [
+      { "emoji": "🐢", "label": "Tortoise", "isCorrect": true },
+      { "emoji": "🦋", "label": "Butterfly", "isCorrect": false }
+    ],
+    "category": "lifespan"
+  },
+  {
+    "question": "Which is hotter?",
+    "options": [
+      { "emoji": "☀️", "label": "Sun", "isCorrect": true },
+      { "emoji": "❄️", "label": "Ice", "isCorrect": false }
+    ],
+    "category": "temperature"
+  },
+  {
+    "question": "Which is taller?",
+    "options": [
+      { "emoji": "🦒", "label": "Giraffe", "isCorrect": true },
+      { "emoji": "🐹", "label": "Hamster", "isCorrect": false }
+    ],
+    "category": "height"
+  },
+  {
+    "question": "Which is louder?",
+    "options": [
+      { "emoji": "🦁", "label": "Lion Roar", "isCorrect": true },
+      { "emoji": "🐭", "label": "Mouse Squeak", "isCorrect": false }
+    ],
+    "category": "sound"
+  },
+  {
+    "question": "Which is sharper?",
+    "options": [
+      { "emoji": "🔪", "label": "Knife", "isCorrect": true },
+      { "emoji": "🪑", "label": "Chair", "isCorrect": false }
+    ],
+    "category": "sharpness"
+  },
+  {
+    "question": "Which is sweeter?",
+    "options": [
+      { "emoji": "🍯", "label": "Honey", "isCorrect": true },
+      { "emoji": "🍋", "label": "Lemon", "isCorrect": false }
+    ],
+    "category": "taste"
+  }
+]
